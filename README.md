@@ -27,7 +27,7 @@ Glance up, see `W13`. Click it to peek at quarter and year progress.
 ## Build from source
 
 ```bash
-git clone https://github.com/nicobailon/peek-week.git
+git clone https://github.com/maxsumrall/peek-week.git
 cd peek-week
 ./scripts/build-app.sh
 open "build/Peek Week.app"
