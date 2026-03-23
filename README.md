@@ -4,6 +4,8 @@ A tiny native macOS menu bar app that shows the current **ISO week number**.
 
 Glance up, see `W13`. Click it to peek at quarter and year progress.
 
+![W13 in the menu bar](docs/menubar.png)
+
 ![Peek Week popover](docs/app-running.png)
 
 ## Features
