@@ -52,11 +52,15 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <string>13.0</string>
   <key>LSUIElement</key>
   <true/>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>NSHighResolutionCapable</key>
   <true/>
 </dict>
 </plist>
 PLIST
+
+cp "$ROOT_DIR/Sources/PeekWeek/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 codesign --force --deep --sign - "$APP_DIR" >/dev/null
 
