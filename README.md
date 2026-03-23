@@ -10,7 +10,7 @@ Click it to see how much time is left in the quarter and year.
 
 1. Download **peek-week-macos.dmg** from the [latest release](../../releases/latest)
 2. Drag **Peek Week** to **Applications**
-3. Launch — it starts at login automatically
+3. Launch — on first run it tries to enable start at login automatically
 
 > macOS may warn about an unsigned app. Right-click → Open the first time.
 

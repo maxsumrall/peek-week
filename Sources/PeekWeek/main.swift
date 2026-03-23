@@ -304,7 +304,8 @@ struct ISOWeek: Hashable {
 }
 
 enum LaunchAtLoginController {
-    private static let didAttemptRegistrationKey = "PeekWeek.didAttemptLoginItemRegistration"
+    private static let didEnableLoginItemKey = "PeekWeek.didEnableLoginItemRegistration"
+    private static let legacyDidAttemptRegistrationKey = "PeekWeek.didAttemptLoginItemRegistration"
 
     static func enableOnFirstRunIfPossible() {
         guard #available(macOS 13.0, *) else {
@@ -312,15 +313,19 @@ enum LaunchAtLoginController {
         }
 
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: didAttemptRegistrationKey) else {
+        guard !defaults.bool(forKey: didEnableLoginItemKey) else {
             return
         }
 
-        defaults.set(true, forKey: didAttemptRegistrationKey)
-
         do {
-            try SMAppService.mainApp.register()
+            if SMAppService.mainApp.status != .enabled {
+                try SMAppService.mainApp.register()
+            }
+
+            defaults.set(true, forKey: didEnableLoginItemKey)
+            defaults.removeObject(forKey: legacyDidAttemptRegistrationKey)
         } catch {
+            defaults.removeObject(forKey: didEnableLoginItemKey)
             NSLog("Peek Week could not enable launch at login automatically: \(error.localizedDescription)")
         }
     }

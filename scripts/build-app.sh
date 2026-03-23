@@ -9,9 +9,13 @@ VERSION="${1:-0.1.0}"
 BUILD_DIR="$ROOT_DIR/build"
 APP_DIR="$BUILD_DIR/${APP_NAME}.app"
 ZIP_PATH="$BUILD_DIR/peek-week-macos.zip"
+DMG_PATH="$BUILD_DIR/peek-week-macos.dmg"
+
+SIGN_IDENTITY="${PEEK_WEEK_SIGN_IDENTITY:-Developer ID Application: Max Sumrall (PNZVBQP48R)}"
+NOTARY_PROFILE="${PEEK_WEEK_NOTARY_PROFILE:-peek-week}"
 
 mkdir -p "$BUILD_DIR"
-rm -rf "$APP_DIR" "$ZIP_PATH"
+rm -rf "$APP_DIR" "$ZIP_PATH" "$DMG_PATH"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 
 swiftc \
@@ -50,11 +54,11 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <string>public.app-category.productivity</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
-  <key>LSUIElement</key>
-  <true/>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>LSUIElement</key>
   <true/>
 </dict>
 </plist>
@@ -62,12 +66,27 @@ PLIST
 
 cp "$ROOT_DIR/Sources/PeekWeek/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
-codesign --force --deep --sign - "$APP_DIR" >/dev/null
+# --- Sign ---
+printf '==> Signing...\n'
+codesign --force --deep --timestamp --options runtime \
+  --sign "$SIGN_IDENTITY" "$APP_DIR"
+codesign --verify --verbose "$APP_DIR"
 
+# --- Notarize ---
+printf '==> Notarizing (this takes 1-5 minutes)...\n'
+NOTARIZE_ZIP="$BUILD_DIR/_notarize.zip"
+ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$NOTARIZE_ZIP"
+xcrun notarytool submit "$NOTARIZE_ZIP" \
+  --keychain-profile "$NOTARY_PROFILE" \
+  --wait
+rm -f "$NOTARIZE_ZIP"
+
+# --- Staple ---
+printf '==> Stapling...\n'
+xcrun stapler staple "$APP_DIR"
+
+# --- Package ---
 ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$ZIP_PATH"
-
-DMG_PATH="$BUILD_DIR/peek-week-macos.dmg"
-rm -f "$DMG_PATH"
 
 if command -v create-dmg &>/dev/null; then
   create-dmg \
@@ -81,9 +100,8 @@ if command -v create-dmg &>/dev/null; then
     "$DMG_PATH" \
     "$APP_DIR"
   printf 'Built dmg: %s\n' "$DMG_PATH"
-else
-  printf 'Skipped dmg (create-dmg not installed)\n'
 fi
 
 printf 'Built app: %s\n' "$APP_DIR"
 printf 'Built zip: %s\n' "$ZIP_PATH"
+printf '==> Done! App is signed, notarized, and stapled.\n'
