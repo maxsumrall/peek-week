@@ -3,28 +3,21 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from pathlib import Path
-import math
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 DOCS.mkdir(parents=True, exist_ok=True)
 
 
-def iso_week_start(day: date) -> date:
-    return day - timedelta(days=day.isoweekday() - 1)
-
-
-def weeks_intersecting(start: date, end_exclusive: date) -> list[date]:
-    cursor = iso_week_start(start)
-    weeks: list[date] = []
-    seen: set[date] = set()
-    while cursor < end_exclusive:
-        week_end = cursor + timedelta(days=7)
-        if week_end > start and cursor < end_exclusive and cursor not in seen:
-            weeks.append(cursor)
-            seen.add(cursor)
-        cursor += timedelta(days=7)
-    return weeks
+def format_remaining_days(days: int) -> str:
+    weeks, remainder = divmod(max(0, days), 7)
+    if weeks == 0 and remainder == 0:
+        return "today"
+    if weeks == 0:
+        return f"{remainder}d left"
+    if remainder == 0:
+        return f"{weeks}w left"
+    return f"{weeks}w {remainder}d left"
 
 
 def quarter_bounds(day: date) -> tuple[date, date]:
@@ -44,19 +37,16 @@ def year_bounds(day: date) -> tuple[date, date]:
 
 def metrics(today: date) -> dict[str, object]:
     iso_year, iso_week, _ = today.isocalendar()
-    current_week_start = iso_week_start(today)
-
     quarter_start, quarter_end = quarter_bounds(today)
     year_start, year_end = year_bounds(today)
     quarter = ((today.month - 1) // 3) + 1
 
-    quarter_weeks = weeks_intersecting(quarter_start, quarter_end)
-    year_weeks = weeks_intersecting(year_start, year_end)
-
-    quarter_remaining_incl = sum(1 for w in quarter_weeks if w >= current_week_start)
-    year_remaining_incl = sum(1 for w in year_weeks if w >= current_week_start)
-    quarter_elapsed_incl = sum(1 for w in quarter_weeks if w <= current_week_start)
-    year_elapsed_incl = sum(1 for w in year_weeks if w <= current_week_start)
+    quarter_total_days = (quarter_end - quarter_start).days
+    year_total_days = (year_end - year_start).days
+    quarter_elapsed_days = (today - quarter_start).days
+    year_elapsed_days = (today - year_start).days
+    quarter_remaining_days = (quarter_end - today).days
+    year_remaining_days = (year_end - today).days
 
     return {
         "iso_week": iso_week,
@@ -64,16 +54,14 @@ def metrics(today: date) -> dict[str, object]:
         "quarter": quarter,
         "year": today.year,
         "quarter_label": f"Q{quarter} {today.year}",
-        "quarter_remaining_incl": quarter_remaining_incl,
-        "quarter_remaining_excl": max(0, quarter_remaining_incl - 1),
-        "year_remaining_incl": year_remaining_incl,
-        "year_remaining_excl": max(0, year_remaining_incl - 1),
-        "quarter_total": len(quarter_weeks),
-        "quarter_elapsed": quarter_elapsed_incl,
-        "year_total": len(year_weeks),
-        "year_elapsed": year_elapsed_incl,
-        "quarter_fraction": quarter_elapsed_incl / len(quarter_weeks),
-        "year_fraction": year_elapsed_incl / len(year_weeks),
+        "quarter_remaining": format_remaining_days(quarter_remaining_days),
+        "year_remaining": format_remaining_days(year_remaining_days),
+        "quarter_total_days": quarter_total_days,
+        "quarter_elapsed_days": quarter_elapsed_days,
+        "year_total_days": year_total_days,
+        "year_elapsed_days": year_elapsed_days,
+        "quarter_fraction": quarter_elapsed_days / quarter_total_days,
+        "year_fraction": year_elapsed_days / year_total_days,
     }
 
 
@@ -308,14 +296,14 @@ body {
     </div>
 
     <div class=\"section\">
-      <h3>Quarter</h3>
-      <p>{data['quarter_remaining_incl']} incl / {data['quarter_remaining_excl']} excl remaining</p>
+      <h3>Quarter left</h3>
+      <p>{data['quarter_remaining']}</p>
       <div class=\"track\"><div class=\"fill teal\" style=\"width:{quarter_pct}%\"></div></div>
     </div>
 
     <div class=\"section\">
-      <h3>Year</h3>
-      <p>{data['year_remaining_incl']} incl / {data['year_remaining_excl']} excl remaining</p>
+      <h3>Year left</h3>
+      <p>{data['year_remaining']}</p>
       <div class=\"track\"><div class=\"fill amber\" style=\"width:{year_pct}%\"></div></div>
     </div>
 
@@ -609,7 +597,7 @@ body {
             </div>
             <div class=\"feature\">
               <h3>Quarter + year context</h3>
-              <p>Shows remaining weeks both including and excluding the current week.</p>
+              <p>Shows date-based quarter and year time left, rendered as weeks + days.</p>
             </div>
             <div class=\"feature\">
               <h3>Native popover</h3>
@@ -626,7 +614,7 @@ body {
             <div class=\"head\">Terminal</div>
             <pre>git clone &lt;repo-url&gt;
 cd peek-week
-./scripts/build-app.sh 0.1.0
+./scripts/build-app.sh 0.1.1
 open "build/Peek Week.app"</pre>
           </div>
 

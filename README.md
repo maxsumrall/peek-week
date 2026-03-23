@@ -13,8 +13,8 @@ Click the menu bar item to peek at quarter/year progress without turning this in
 - shows:
   - current week number
   - current quarter label
-  - remaining weeks in the current quarter (`incl` and `excl` current week)
-  - remaining weeks in the current year (`incl` and `excl` current week)
+  - calendar time left in the current quarter (rendered as `1w 2d left`)
+  - calendar time left in the current year (rendered as `40w 4d left`)
   - quarter and year progress bars
 - enables **Launch at Login** on first run when macOS allows it
 - stays tiny and dependency-free at runtime
@@ -40,7 +40,7 @@ Sometimes you just want to glance up and see `W14`.
 ```bash
 git clone <your-repo-url>
 cd peek-week
-./scripts/build-app.sh 0.1.0
+./scripts/build-app.sh 0.1.1
 open "build/Peek Week.app"
 ```
 
@@ -55,7 +55,7 @@ The app is intentionally small:
 ### Local build
 
 ```bash
-./scripts/build-app.sh
+./scripts/build-app.sh 0.1.1
 ```
 
 Outputs:
@@ -65,7 +65,8 @@ Outputs:
 
 ## Design choices
 
-- **ISO 8601** weeks, because that is what most people mean when they say `W14`
+- **ISO 8601** weeks for the menu bar number, because that is what most people mean when they say `W14`
+- **calendar-date remaining time** for quarter/year countdowns, because that is what people usually mean by “time left in Q2”
 - **native SwiftUI/AppKit** instead of a script host or third-party menu bar tool
 - **popover, not a full settings window**
 - **no feature creep**

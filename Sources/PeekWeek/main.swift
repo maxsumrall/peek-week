@@ -55,7 +55,7 @@ final class StatusItemController: NSObject {
 
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 300, height: 250)
+        popover.contentSize = NSSize(width: 320, height: 270)
         popover.contentViewController = NSHostingController(
             rootView: PeekWeekPopover(store: store) {
                 NSApp.terminate(nil)
@@ -178,10 +178,8 @@ struct WeekMetrics: Equatable {
     let menuBarTitle: String
     let isoWeekLabel: String
     let quarterLabel: String
-    let quarterRemainingIncludingCurrent: Int
-    let quarterRemainingExcludingCurrent: Int
-    let yearRemainingIncludingCurrent: Int
-    let yearRemainingExcludingCurrent: Int
+    let quarterRemaining: RemainingTimeSnapshot
+    let yearRemaining: RemainingTimeSnapshot
     let quarterProgress: ProgressSnapshot
     let yearProgress: ProgressSnapshot
 
@@ -199,93 +197,76 @@ struct WeekMetrics: Equatable {
         let year = gregorianCalendar.component(.year, from: referenceDate)
         let quarterLabel = "Q\(quarter) \(year)"
 
-        let currentWeekStart = isoWeek.startDate
         let quarterInterval = gregorianCalendar.dateInterval(of: .quarter, for: referenceDate)!
         let yearInterval = gregorianCalendar.dateInterval(of: .year, for: referenceDate)!
-
-        let quarterWeeks = ISOWeek.weeksIntersecting(interval: quarterInterval, calendar: isoCalendar)
-        let yearWeeks = ISOWeek.weeksIntersecting(interval: yearInterval, calendar: isoCalendar)
-
-        let quarterRemainingIncludingCurrent = quarterWeeks.filter { $0.startDate >= currentWeekStart }.count
-        let yearRemainingIncludingCurrent = yearWeeks.filter { $0.startDate >= currentWeekStart }.count
-
-        let quarterElapsedIncludingCurrent = quarterWeeks.filter { $0.startDate <= currentWeekStart }.count
-        let yearElapsedIncludingCurrent = yearWeeks.filter { $0.startDate <= currentWeekStart }.count
 
         return WeekMetrics(
             menuBarTitle: weekLabel,
             isoWeekLabel: weekLabel,
             quarterLabel: quarterLabel,
-            quarterRemainingIncludingCurrent: quarterRemainingIncludingCurrent,
-            quarterRemainingExcludingCurrent: max(0, quarterRemainingIncludingCurrent - 1),
-            yearRemainingIncludingCurrent: yearRemainingIncludingCurrent,
-            yearRemainingExcludingCurrent: max(0, yearRemainingIncludingCurrent - 1),
-            quarterProgress: ProgressSnapshot(
-                elapsedWeeksIncludingCurrent: quarterElapsedIncludingCurrent,
-                totalWeeks: quarterWeeks.count
-            ),
-            yearProgress: ProgressSnapshot(
-                elapsedWeeksIncludingCurrent: yearElapsedIncludingCurrent,
-                totalWeeks: yearWeeks.count
-            )
+            quarterRemaining: RemainingTimeSnapshot(referenceDate: referenceDate, intervalEnd: quarterInterval.end, calendar: gregorianCalendar),
+            yearRemaining: RemainingTimeSnapshot(referenceDate: referenceDate, intervalEnd: yearInterval.end, calendar: gregorianCalendar),
+            quarterProgress: ProgressSnapshot(referenceDate: referenceDate, interval: quarterInterval, calendar: gregorianCalendar),
+            yearProgress: ProgressSnapshot(referenceDate: referenceDate, interval: yearInterval, calendar: gregorianCalendar)
         )
     }
 }
 
+struct RemainingTimeSnapshot: Equatable {
+    let totalDaysRemaining: Int
+    let weeks: Int
+    let days: Int
+
+    init(referenceDate: Date, intervalEnd: Date, calendar: Calendar) {
+        let startOfToday = calendar.startOfDay(for: referenceDate)
+        let remainingDays = max(0, calendar.dateComponents([.day], from: startOfToday, to: intervalEnd).day ?? 0)
+
+        totalDaysRemaining = remainingDays
+        weeks = remainingDays / 7
+        days = remainingDays % 7
+    }
+
+    var summary: String {
+        switch (weeks, days) {
+        case (0, 0):
+            return "today"
+        case (0, let days):
+            return "\(days)d left"
+        case (let weeks, 0):
+            return "\(weeks)w left"
+        case (let weeks, let days):
+            return "\(weeks)w \(days)d left"
+        }
+    }
+}
+
 struct ProgressSnapshot: Equatable {
-    let elapsedWeeksIncludingCurrent: Int
-    let totalWeeks: Int
+    let elapsedDays: Int
+    let totalDays: Int
+
+    init(referenceDate: Date, interval: DateInterval, calendar: Calendar) {
+        let startOfInterval = calendar.startOfDay(for: interval.start)
+        let startOfToday = calendar.startOfDay(for: referenceDate)
+        totalDays = max(1, calendar.dateComponents([.day], from: startOfInterval, to: interval.end).day ?? 1)
+        elapsedDays = min(max(0, calendar.dateComponents([.day], from: startOfInterval, to: startOfToday).day ?? 0), totalDays)
+    }
 
     var fractionComplete: Double {
-        guard totalWeeks > 0 else {
-            return 0
-        }
-        return min(max(Double(elapsedWeeksIncludingCurrent) / Double(totalWeeks), 0), 1)
+        min(max(Double(elapsedDays) / Double(totalDays), 0), 1)
     }
 
     var subtitle: String {
-        "\(elapsedWeeksIncludingCurrent) / \(totalWeeks) weeks"
+        "\(elapsedDays) / \(totalDays) days"
     }
 }
 
 struct ISOWeek: Hashable {
     let yearForWeekOfYear: Int
     let week: Int
-    let startDate: Date
 
     init(date: Date, calendar: Calendar) {
-        let interval = calendar.dateInterval(of: .weekOfYear, for: date)!
-        startDate = interval.start
         yearForWeekOfYear = calendar.component(.yearForWeekOfYear, from: date)
         week = calendar.component(.weekOfYear, from: date)
-    }
-
-    static func weeksIntersecting(interval: DateInterval, calendar: Calendar) -> [ISOWeek] {
-        guard let firstWeek = calendar.dateInterval(of: .weekOfYear, for: interval.start) else {
-            return []
-        }
-
-        var weeks: [ISOWeek] = []
-        var seen: Set<ISOWeek> = []
-        var cursor = firstWeek.start
-
-        while cursor < interval.end {
-            let week = ISOWeek(date: cursor, calendar: calendar)
-            if !seen.contains(week) {
-                let weekInterval = calendar.dateInterval(of: .weekOfYear, for: cursor)!
-                if weekInterval.end > interval.start && weekInterval.start < interval.end {
-                    weeks.append(week)
-                    seen.insert(week)
-                }
-            }
-
-            guard let next = calendar.date(byAdding: .day, value: 7, to: cursor) else {
-                break
-            }
-            cursor = next
-        }
-
-        return weeks.sorted { $0.startDate < $1.startDate }
     }
 }
 
@@ -335,9 +316,9 @@ struct PeekWeekPopover: View {
             }
 
             StatLine(
-                title: "Quarter",
-                includingCurrent: metrics.quarterRemainingIncludingCurrent,
-                excludingCurrent: metrics.quarterRemainingExcludingCurrent
+                title: "Quarter left",
+                summary: metrics.quarterRemaining.summary,
+                detail: "Calendar time remaining in \(metrics.quarterLabel)"
             )
 
             ProgressStrip(
@@ -347,9 +328,9 @@ struct PeekWeekPopover: View {
             )
 
             StatLine(
-                title: "Year",
-                includingCurrent: metrics.yearRemainingIncludingCurrent,
-                excludingCurrent: metrics.yearRemainingExcludingCurrent
+                title: "Year left",
+                summary: metrics.yearRemaining.summary,
+                detail: "Calendar time remaining this year"
             )
 
             ProgressStrip(
@@ -365,21 +346,24 @@ struct PeekWeekPopover: View {
             }
         }
         .padding(16)
-        .frame(width: 300)
+        .frame(width: 320)
     }
 }
 
 struct StatLine: View {
     let title: String
-    let includingCurrent: Int
-    let excludingCurrent: Int
+    let summary: String
+    let detail: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
-            Text("\(includingCurrent) incl / \(excludingCurrent) excl remaining")
+            Text(summary)
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .foregroundStyle(.primary)
+            Text(detail)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
         }
     }
