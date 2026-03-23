@@ -19,8 +19,8 @@ Glance up, see `W13`. Click it to peek at quarter and year progress.
 
 ## Install
 
-1. Download **peek-week-macos.zip** from the [latest release](../../releases/latest)
-2. Unzip and drag **Peek Week.app** to `/Applications`
+1. Download **peek-week-macos.dmg** from the [latest release](../../releases/latest)
+2. Open it and drag **Peek Week** to **Applications**
 3. Launch it
 4. macOS may warn about an unsigned app — **right-click → Open** the first time
 

@@ -66,5 +66,24 @@ codesign --force --deep --sign - "$APP_DIR" >/dev/null
 
 ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$ZIP_PATH"
 
+DMG_PATH="$BUILD_DIR/peek-week-macos.dmg"
+rm -f "$DMG_PATH"
+
+if command -v create-dmg &>/dev/null; then
+  create-dmg \
+    --volname "Peek Week" \
+    --window-pos 200 120 \
+    --window-size 600 400 \
+    --icon-size 128 \
+    --icon "Peek Week.app" 150 190 \
+    --app-drop-link 450 190 \
+    --no-internet-enable \
+    "$DMG_PATH" \
+    "$APP_DIR"
+  printf 'Built dmg: %s\n' "$DMG_PATH"
+else
+  printf 'Skipped dmg (create-dmg not installed)\n'
+fi
+
 printf 'Built app: %s\n' "$APP_DIR"
 printf 'Built zip: %s\n' "$ZIP_PATH"

@@ -14,11 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
       - name: Build app bundle
         run: ./scripts/build-app.sh "${GITHUB_REF_NAME#v}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/peek-week-macos.zip
+          files: |
+            build/peek-week-macos.dmg
+            build/peek-week-macos.zip
           generate_release_notes: true
