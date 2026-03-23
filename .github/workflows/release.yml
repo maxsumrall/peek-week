@@ -1,22 +1,24 @@
-name: build-release
+name: release
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Build app bundle
-        run: ./scripts/build-app.sh ${GITHUB_REF_NAME#v}
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        run: ./scripts/build-app.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: peek-week-macos
-          path: |
-            build/Peek Week.app
-            build/peek-week-macos.zip
+          files: build/peek-week-macos.zip
+          generate_release_notes: true

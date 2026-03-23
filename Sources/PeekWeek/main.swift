@@ -36,6 +36,7 @@ final class StatusItemController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private var cancellable: AnyCancellable?
+    private var contextMenu: NSMenu?
 
     init(store: WeekStore) {
         self.store = store
@@ -50,16 +51,25 @@ final class StatusItemController: NSObject {
 
         button.target = self
         button.action = #selector(togglePopover(_:))
-        button.sendAction(on: [.leftMouseUp])
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.setAccessibilityLabel("Peek Week")
+
+        let menu = NSMenu()
+        let titleItem = NSMenuItem(title: "Peek Week", action: nil, keyEquivalent: "")
+        titleItem.isEnabled = false
+        menu.addItem(titleItem)
+        menu.addItem(NSMenuItem.separator())
+        let quitItem = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        statusItem.menu = nil
+        self.contextMenu = menu
 
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 320, height: 270)
+        popover.contentSize = NSSize(width: 290, height: 280)
         popover.contentViewController = NSHostingController(
-            rootView: PeekWeekPopover(store: store) {
-                NSApp.terminate(nil)
-            }
+            rootView: PeekWeekPopover(store: store)
         )
 
         cancellable = store.$metrics
@@ -74,12 +84,25 @@ final class StatusItemController: NSObject {
             return
         }
 
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseUp {
+            popover.performClose(nil)
+            statusItem.menu = contextMenu
+            button.performClick(nil)
+            statusItem.menu = nil
+            return
+        }
+
         if popover.isShown {
             popover.performClose(sender)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    @objc private func quitApp() {
+        NSApp.terminate(nil)
     }
 
     private func applyTitle(_ title: String) {
@@ -177,7 +200,10 @@ final class WeekStore: ObservableObject {
 struct WeekMetrics: Equatable {
     let menuBarTitle: String
     let isoWeekLabel: String
+    let weekNumber: Int
     let quarterLabel: String
+    let quarterNumber: Int
+    let year: Int
     let quarterRemaining: RemainingTimeSnapshot
     let yearRemaining: RemainingTimeSnapshot
     let quarterProgress: ProgressSnapshot
@@ -203,7 +229,10 @@ struct WeekMetrics: Equatable {
         return WeekMetrics(
             menuBarTitle: weekLabel,
             isoWeekLabel: weekLabel,
+            weekNumber: isoWeek.week,
             quarterLabel: quarterLabel,
+            quarterNumber: quarter,
+            year: year,
             quarterRemaining: RemainingTimeSnapshot(referenceDate: referenceDate, intervalEnd: quarterInterval.end, calendar: gregorianCalendar),
             yearRemaining: RemainingTimeSnapshot(referenceDate: referenceDate, intervalEnd: yearInterval.end, calendar: gregorianCalendar),
             quarterProgress: ProgressSnapshot(referenceDate: referenceDate, interval: quarterInterval, calendar: gregorianCalendar),
@@ -229,13 +258,13 @@ struct RemainingTimeSnapshot: Equatable {
     var summary: String {
         switch (weeks, days) {
         case (0, 0):
-            return "today"
-        case (0, let days):
-            return "\(days)d left"
-        case (let weeks, 0):
-            return "\(weeks)w left"
-        case (let weeks, let days):
-            return "\(weeks)w \(days)d left"
+            return "done"
+        case (0, let d):
+            return "\(d)d left"
+        case (let w, 0):
+            return "\(w)w left"
+        case (let w, let d):
+            return "\(w)w \(d)d left"
         }
     }
 }
@@ -253,6 +282,10 @@ struct ProgressSnapshot: Equatable {
 
     var fractionComplete: Double {
         min(max(Double(elapsedDays) / Double(totalDays), 0), 1)
+    }
+
+    var percentComplete: Int {
+        Int((fractionComplete * 100).rounded())
     }
 
     var subtitle: String {
@@ -295,106 +328,144 @@ enum LaunchAtLoginController {
 
 struct PeekWeekPopover: View {
     @ObservedObject var store: WeekStore
-    let quit: () -> Void
 
     var body: some View {
         let metrics = store.metrics
 
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(metrics.isoWeekLabel)
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Peek Week")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text(metrics.quarterLabel)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(metrics.weekNumber)")
+                        .font(.system(size: 44, weight: .heavy))
+                        .tracking(-2)
+                        .lineLimit(1)
+                    HStack(alignment: .center, spacing: 6) {
+                        Text("Q" + String(metrics.quarterNumber))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(LinearGradient(
+                                        colors: [Color(red: 0.03, green: 0.57, blue: 0.70), Color(red: 0.05, green: 0.46, blue: 0.56)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+                            )
+                        Text(String(metrics.year))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                Spacer()
+                .frame(width: 80, alignment: .leading)
+
+                Rectangle()
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(width: 2)
+                    .padding(.vertical, 4)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    CountdownStat(
+                        title: "Quarter",
+                        summary: metrics.quarterRemaining.summary
+                    )
+                    CountdownStat(
+                        title: "Year",
+                        summary: metrics.yearRemaining.summary
+                    )
+                }
+                .padding(.leading, 16)
             }
 
-            StatLine(
-                title: "Quarter left",
-                summary: metrics.quarterRemaining.summary,
-                detail: "Calendar time remaining in \(metrics.quarterLabel)"
+            InsetStatCard(
+                title: "Quarter",
+                subtitle: metrics.quarterProgress.subtitle,
+                percent: metrics.quarterProgress.percentComplete,
+                fraction: metrics.quarterProgress.fractionComplete,
+                gradient: [Color(red: 0.13, green: 0.83, blue: 0.93), Color(red: 0.03, green: 0.57, blue: 0.70)]
             )
 
-            ProgressStrip(
-                title: "Quarter progress",
-                tint: Color(red: 0.07, green: 0.57, blue: 0.73),
-                snapshot: metrics.quarterProgress
+            InsetStatCard(
+                title: "Year",
+                subtitle: metrics.yearProgress.subtitle,
+                percent: metrics.yearProgress.percentComplete,
+                fraction: metrics.yearProgress.fractionComplete,
+                gradient: [Color(red: 0.99, green: 0.83, blue: 0.29), Color(red: 0.85, green: 0.47, blue: 0.02)]
             )
 
-            StatLine(
-                title: "Year left",
-                summary: metrics.yearRemaining.summary,
-                detail: "Calendar time remaining this year"
-            )
-
-            ProgressStrip(
-                title: "Year progress",
-                tint: Color(red: 0.84, green: 0.47, blue: 0.04),
-                snapshot: metrics.yearProgress
-            )
-
-            HStack {
-                Spacer()
-                Button("Quit", action: quit)
-                    .keyboardShortcut("q")
-            }
         }
-        .padding(16)
-        .frame(width: 320)
+        .padding(22)
+        .frame(width: 290)
     }
 }
 
-struct StatLine: View {
+struct CountdownStat: View {
     let title: String
     let summary: String
-    let detail: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
-            Text(summary)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
-            Text(detail)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
+            Text(styledSummary)
+                .tracking(-0.2)
         }
+    }
+
+    private var styledSummary: AttributedString {
+        var full = AttributedString(summary)
+        full.font = .system(size: 15, weight: .semibold)
+        if let range = full.range(of: " left") {
+            full[range].font = .system(size: 11, weight: .regular)
+            full[range].foregroundColor = .secondary
+        }
+        return full
     }
 }
 
-struct ProgressStrip: View {
+struct InsetStatCard: View {
     let title: String
-    let tint: Color
-    let snapshot: ProgressSnapshot
+    let subtitle: String
+    let percent: Int
+    let fraction: Double
+    let gradient: [Color]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                 Spacer()
-                Text(snapshot.subtitle)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                Text(subtitle)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
 
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.secondary.opacity(0.15))
+                        .fill(Color.secondary.opacity(0.1))
+
                     Capsule()
-                        .fill(tint)
-                        .frame(width: max(10, geometry.size.width * snapshot.fractionComplete))
+                        .fill(LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(36, geometry.size.width * fraction))
+                        .overlay(alignment: .trailing) {
+                            Text("\(percent)%")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.trailing, 7)
+                        }
                 }
             }
-            .frame(height: 8)
+            .frame(height: 20)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.primary.opacity(0.04))
+        )
     }
 }

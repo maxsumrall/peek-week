@@ -1,90 +1,61 @@
 # Peek Week
 
-A tiny native macOS menu bar app that shows the current **ISO week number** as `W14`.
+A tiny native macOS menu bar app that shows the current **ISO week number**.
 
-Click the menu bar item to peek at quarter/year progress without turning this into a whole calendar app.
+Glance up, see `W13`. Click it to peek at quarter and year progress.
 
-![Peek Week running in the menu bar](docs/app-running.png)
+![Peek Week popover](docs/app-running.png)
 
-## What it does
+## Features
 
-- shows the current ISO 8601 week number in the menu bar
-- opens a small native popover when you click it
-- shows:
-  - current week number
-  - current quarter label
-  - calendar time left in the current quarter (rendered as `1w 2d left`)
-  - calendar time left in the current year (rendered as `40w 4d left`)
-  - quarter and year progress bars
-- enables **Launch at Login** on first run when macOS allows it
-- stays tiny and dependency-free at runtime
-
-## Why this exists
-
-macOS shows the date in the menu bar, but not the week number.
-
-Sometimes you just want to glance up and see `W14`.
+- **Menu bar**: current ISO 8601 week number (`W13`)
+- **Click** to see a popover with:
+  - Week number + quarter badge
+  - Time remaining in the quarter and year (`1w 2d left`)
+  - Progress bars with percentage
+- **Right-click** to quit
+- Launches at login automatically
+- Single file, zero dependencies, native SwiftUI
 
 ## Install
 
-### Easy path
+1. Download **peek-week-macos.zip** from the [latest release](../../releases/latest)
+2. Unzip and drag **Peek Week.app** to `/Applications`
+3. Launch it
+4. macOS may warn about an unsigned app — **right-click → Open** the first time
 
-1. Download the latest `peek-week-macos.zip` from Releases.
-2. Unzip it.
-3. Drag **Peek Week.app** into `/Applications`.
-4. Launch it once.
-5. If macOS complains because the app is unsigned, use **Right click → Open** the first time.
-
-### Build locally
+## Build from source
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/nicobailon/peek-week.git
 cd peek-week
-./scripts/build-app.sh 0.1.1
+./scripts/build-app.sh
 open "build/Peek Week.app"
 ```
 
-## Development
+Requires Xcode command-line tools (`xcode-select --install`).
 
-The app is intentionally small:
+## How it works
 
-- `Sources/PeekWeek/main.swift` — app, menu bar controller, week calculations, and popover UI
-- `scripts/build-app.sh` — builds the `.app` bundle and zipped release artifact
-- `.github/workflows/release.yml` — GitHub Actions workflow for macOS release builds
+Everything is in one file: [`Sources/PeekWeek/main.swift`](Sources/PeekWeek/main.swift).
 
-### Local build
-
-```bash
-./scripts/build-app.sh 0.1.1
-```
-
-Outputs:
-
-- `build/Peek Week.app`
-- `build/peek-week-macos.zip`
+- `NSStatusItem` for the menu bar text
+- `NSPopover` with a SwiftUI view for the click panel
+- ISO 8601 calendar for week numbering
+- Gregorian calendar for quarter/year progress
+- `SMAppService` for launch-at-login (macOS 13+)
+- Refreshes on day change, system wake, and clock changes
 
 ## Design choices
 
-- **ISO 8601** weeks for the menu bar number, because that is what most people mean when they say `W14`
-- **calendar-date remaining time** for quarter/year countdowns, because that is what people usually mean by “time left in Q2”
-- **native SwiftUI/AppKit** instead of a script host or third-party menu bar tool
-- **popover, not a full settings window**
-- **no feature creep**
+- **ISO 8601** weeks — what most people mean by "W13"
+- **Calendar days** for remaining time — not business days
+- **Native AppKit/SwiftUI** — no Electron, no script host, no third-party dependencies
+- **No settings, no preferences, no feature creep**
 
-## Screenshots
+## Requirements
 
-### Menu bar app
-
-![Peek Week menu bar app](docs/app-running.png)
-
-### GitHub-style README preview
-
-![Peek Week GitHub preview](docs/github-preview.png)
-
-## Notes
-
-- The release artifact is currently intended to be simple and shareable, not fully notarized.
-- If you want a smoother download/install story for strangers, add proper Apple signing + notarization later.
+macOS 13 (Ventura) or later.
 
 ## License
 
