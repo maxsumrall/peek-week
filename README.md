@@ -1,8 +1,8 @@
 # Peek Week
 
-macOS shows the date in the menu bar, but not the week number. Sometimes you just want to glance up and see **W13**.
+Are we in week 3? Week 33? Now you know — **the current week number, always visible in your menu bar**.
 
-Peek Week is a tiny native menu bar app that fixes that. Click it to see how much of the quarter and year is left.
+Click it to see how much time is left in the quarter and year.
 
 <img src="docs/preview.png" width="350" alt="Peek Week">
 
