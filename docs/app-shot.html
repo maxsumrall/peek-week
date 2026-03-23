@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peek Week app preview</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --bg-1: #121826;
+  --bg-2: #1f3b57;
+  --bg-3: #2c5b74;
+  --bar: rgba(18, 20, 28, 0.72);
+  --surface: rgba(255,255,255,0.9);
+  --surface-2: rgba(248,250,252,0.92);
+  --border: rgba(15, 23, 42, 0.14);
+  --text: #0f172a;
+  --muted: #475569;
+  --teal: #0891b2;
+  --amber: #d97706;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 20%),
+    radial-gradient(circle at bottom left, rgba(255,255,255,0.08), transparent 30%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2) 56%, var(--bg-3));
+}
+.canvas {
+  width: 1440px;
+  height: 780px;
+  position: relative;
+  overflow: hidden;
+}
+.menu-bar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 42px;
+  background: var(--bar);
+  backdrop-filter: blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  color: rgba(255,255,255,0.92);
+  font-size: 15px;
+}
+.menu-left, .menu-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.8);
+  display: inline-block;
+}
+.status-pill {
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.12);
+}
+.status-pill.week {
+  background: rgba(255,255,255,0.18);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.popover {
+  position: absolute;
+  top: 62px;
+  right: 124px;
+  width: 320px;
+  border-radius: 18px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.28), 0 10px 26px rgba(15, 23, 42, 0.18);
+  padding: 18px;
+}
+.popover:before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  right: 78px;
+  width: 18px;
+  height: 18px;
+  background: var(--surface-2);
+  transform: rotate(45deg);
+  border-left: 1px solid rgba(255,255,255,0.55);
+  border-top: 1px solid rgba(255,255,255,0.55);
+}
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.week {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.brand small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.brand span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.section { margin-top: 14px; }
+.section h3 {
+  margin: 0 0 5px;
+  font-size: 13px;
+}
+.section p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.track {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.fill.teal { background: linear-gradient(90deg, #0ea5e9, var(--teal)); }
+.fill.amber { background: linear-gradient(90deg, #f59e0b, var(--amber)); }
+.quit {
+  margin-top: 18px;
+  display: inline-flex;
+  padding: 8px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.72);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+.caption {
+  position: absolute;
+  left: 36px;
+  bottom: 36px;
+  color: rgba(255,255,255,0.92);
+  max-width: 460px;
+}
+.caption .eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.caption h1 {
+  margin: 0 0 10px;
+  font-size: 42px;
+  line-height: 1.02;
+}
+.caption p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.82);
+}
+</style>
+</head>
+<body>
+
+<div class="canvas">
+  <div class="menu-bar">
+    <div class="menu-left">
+      <span></span>
+      <span>Finder</span>
+      <span>File</span>
+      <span>Edit</span>
+      <span>View</span>
+      <span>Go</span>
+      <span>Window</span>
+      <span>Help</span>
+    </div>
+    <div class="menu-right">
+      <span class="status-pill">⌘</span>
+      <span class="status-pill">􀙇</span>
+      <span class="status-pill week">W13</span>
+      <span class="status-pill">Mon 23 Mar</span>
+    </div>
+  </div>
+
+  <div class="popover">
+    <div class="head">
+      <div class="week">W13</div>
+      <div class="brand">
+        <small>Peek Week</small>
+        <span>Q1 2026</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Quarter</h3>
+      <p>2 incl / 1 excl remaining</p>
+      <div class="track"><div class="fill teal" style="width:92.9%"></div></div>
+    </div>
+
+    <div class="section">
+      <h3>Year</h3>
+      <p>41 incl / 40 excl remaining</p>
+      <div class="track"><div class="fill amber" style="width:24.5%"></div></div>
+    </div>
+
+    <button class="quit">Quit</button>
+  </div>
+
+  <div class="caption">
+    <div class="eyebrow">Menu bar utility</div>
+    <h1>Week number, finally where it belongs.</h1>
+    <p>A tiny native app that keeps the top bar clean: just <strong>W13</strong>, with quarter/year context one click away.</p>
+  </div>
+</div>
+
+</body>
+</html>

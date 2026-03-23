@@ -1,0 +1,22 @@
+name: build-release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app bundle
+        run: ./scripts/build-app.sh ${GITHUB_REF_NAME#v}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: peek-week-macos
+          path: |
+            build/Peek Week.app
+            build/peek-week-macos.zip
